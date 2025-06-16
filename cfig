@@ -1,2 +1,3 @@
 #!/bin/bash
-cmake -DENABLE_OPENMP=ON -DENABLE_OPENCL=ON $@ ..
+cmake -DENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Release $@ ..
+# cmake -DENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Debug $@ ..

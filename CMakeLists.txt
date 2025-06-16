@@ -11,9 +11,9 @@ cmake_minimum_required(VERSION 3.8)
 set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 
 project(enblend)
-IF(NOT MSVC)
-  SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE)
-ENDIF(NOT MSVC)
+# IF(NOT MSVC)
+#   SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE)
+# ENDIF(NOT MSVC)
 # where to look first for cmake modules, before ${CMAKE_ROOT}/Modules/
 # is checked
 # For now, reuse the hugin modules directory
@@ -495,6 +495,11 @@ MESSAGE(STATUS "PNG:                     ${PNG_FOUND}")
 MESSAGE(STATUS "")
 MESSAGE(STATUS ${WARNINGS})
 MESSAGE(STATUS "")
+
+
+# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+# set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
 
 
 add_subdirectory(src)
