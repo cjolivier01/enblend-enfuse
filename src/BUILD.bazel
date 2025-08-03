@@ -1,0 +1,215 @@
+# BUILD file for src/ directory
+
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+# Common compiler flags
+COMMON_COPTS = [
+    "-std=c++11",
+    "-Wall",
+    "-O2",
+    "-D_GNU_SOURCE",
+    "-D_FILE_OFFSET_BITS=64",
+    "-I$(GENDIR)",
+    "-I.",
+]
+
+ENBLEND_COPTS = COMMON_COPTS + ["-DENBLEND_SOURCE"]
+ENFUSE_COPTS = COMMON_COPTS + ["-DENFUSE_SOURCE"]
+
+# Generate signature header
+genrule(
+    name = "generate_signature",
+    srcs = [
+        "DefaultSig.pm",
+        "Sig.pm",
+        "gen_sig",
+        "//:VERSION",
+    ],
+    outs = ["signature.h"],
+    cmd = "perl -I$(location DefaultSig.pm | xargs dirname) $(location gen_sig) --extra=$$(cat $(location //:VERSION)) > $@",
+)
+
+# Generate OpenCL kernel includes (if using OpenCL)
+genrule(
+    name = "cl_to_icl",
+    srcs = glob(["*.cl"]),
+    outs = [
+        "calculate_state_probabilities.icl",
+        "distance_transform_fh.icl",
+    ],
+    cmd = """
+    for cl in $(SRCS); do
+        base=$$(basename $$cl .cl)
+        $(location embrace) --format=c++ --label=$${base}_source_code $$cl > $(GENDIR)/src/$${base}.icl
+    done
+    """,
+    tools = ["embrace"],
+)
+
+# Common utility library
+cc_library(
+    name = "common_lib",
+    srcs = [
+        "alternativepercentage.cc",
+        "error_message.cc",
+        "filenameparse.cc",
+        "filespec.cc",
+        "introspection.cc",
+        "mersenne.cc",
+        "metadata.cc",
+        "parameter.cc",
+        "path.cc",
+        "progress_display.cc",
+        "self_test.cc",
+        "tiff_message.cc",
+        "timer.cc",
+    ],
+    hdrs = glob([
+        "*.h",
+        "*.hxx",
+    ]) + [
+        "signature.h",
+        "//:config.h",
+    ],
+    copts = COMMON_COPTS,
+    deps = [
+        "@boost//:filesystem",
+        "@boost//:system",
+        "@gsl//:gsl",
+        "@vigra//:vigra",
+        "@libtiff//:tiff",
+        "@lcms2//:lcms2",
+    ],
+)
+
+# Enblend-specific sources
+cc_library(
+    name = "enblend_lib",
+    srcs = [
+        "gpu.cc",
+        "nearest.cc",
+        "optimizer.cc",
+        "minimizer.cc",
+    ],
+    hdrs = [
+        "assemble.h",
+        "blend.h",
+        "bounds.h",
+        "gpu.h",
+        "mask.h",
+        "masktypedefs.h",
+        "minimizer.h",
+        "muopt.h",
+        "nearest.h",
+        "optimizer.h",
+        "pyramid.h",
+    ],
+    copts = ENBLEND_COPTS,
+    deps = [
+        ":common_lib",
+        "//src/layer_selection:layersel",
+    ],
+)
+
+# Enfuse-specific sources
+cc_library(
+    name = "enfuse_lib",
+    srcs = [
+        "exposure_weight.cc",
+    ],
+    hdrs = [
+        "enfuse.h",
+        "exposure_weight.h",
+        "exposure_weight_base.h",
+        "fixmath.h",
+        "mga.h",
+    ],
+    copts = ENFUSE_COPTS,
+    deps = [
+        ":common_lib",
+    ],
+)
+
+# OpenCL support (optional)
+cc_library(
+    name = "opencl_lib",
+    srcs = [
+        "opencl.cc",
+        "opencl_exposure_weight.cc",
+    ],
+    hdrs = [
+        "opencl.h",
+        "opencl_exposure_weight.h",
+        "opencl_vigra.h",
+    ],
+    copts = COMMON_COPTS,
+    deps = [
+        ":common_lib",
+    ],
+)
+
+# Dynamic loader support (optional)
+cc_library(
+    name = "dynamic_loader",
+    srcs = glob(["dynamic_loader/*.cc"]),
+    hdrs = glob(["dynamic_loader/*.h"]),
+    copts = COMMON_COPTS,
+)
+
+# Enblend binary
+cc_binary(
+    name = "enblend",
+    srcs = ["enblend.cc"],
+    copts = ENBLEND_COPTS,
+    linkopts = [
+        "-lm",
+        "-lpthread",
+    ],
+    deps = [
+        ":common_lib",
+        ":enblend_lib",
+        "@libjpeg//:jpeg",
+        "@libpng//:png",
+    ] + select({
+        "@//:with_openexr": ["@openexr//:openexr"],
+        "//conditions:default": [],
+    }) + select({
+        "@//:with_exiv2": ["@exiv2//:exiv2"],
+        "//conditions:default": [],
+    }),
+)
+
+# Enfuse binary
+cc_binary(
+    name = "enfuse",
+    srcs = ["enfuse.cc"],
+    copts = ENFUSE_COPTS,
+    linkopts = [
+        "-lm",
+        "-lpthread",
+    ],
+    deps = [
+        ":common_lib",
+        ":enfuse_lib",
+        "@libjpeg//:jpeg",
+        "@libpng//:png",
+    ] + select({
+        "@//:with_openexr": ["@openexr//:openexr"],
+        "//conditions:default": [],
+    }) + select({
+        "@//:with_exiv2": ["@exiv2//:exiv2"],
+        "//conditions:default": [],
+    }) + select({
+        "@//:with_dynamic_loader": [":dynamic_loader"],
+        "//conditions:default": [],
+    }),
+)
+
+# Helper tool for OpenCL kernel conversion
+cc_binary(
+    name = "embrace",
+    srcs = ["embrace.cc"],
+    copts = COMMON_COPTS,
+)

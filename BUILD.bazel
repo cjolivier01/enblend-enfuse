@@ -1,0 +1,59 @@
+# Feature configuration BUILD.bazel
+# Place this in the root directory as BUILD.bazel
+
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+package(default_visibility = ["//visibility:public"])
+
+# Configuration settings for optional features
+config_setting(
+    name = "with_openexr",
+    define_values = {"with_openexr": "true"},
+)
+
+config_setting(
+    name = "with_exiv2",
+    define_values = {"with_exiv2": "true"},
+)
+
+config_setting(
+    name = "with_dynamic_loader",
+    define_values = {"with_dynamic_loader": "true"},
+)
+
+config_setting(
+    name = "with_opencl",
+    define_values = {"with_opencl": "true"},
+)
+
+config_setting(
+    name = "with_openmp",
+    define_values = {"with_openmp": "true"},
+)
+
+# Platform detection
+config_setting(
+    name = "linux",
+    constraint_values = ["@platforms//os:linux"],
+)
+
+config_setting(
+    name = "macos",
+    constraint_values = ["@platforms//os:macos"],
+)
+
+config_setting(
+    name = "windows",
+    constraint_values = ["@platforms//os:windows"],
+)
+
+# Alias for main binaries
+alias(
+    name = "enblend",
+    actual = "//src:enblend",
+)
+
+alias(
+    name = "enfuse",
+    actual = "//src:enfuse",
+)

@@ -1,0 +1,39 @@
+# .bazelrc configuration file for enblend-enfuse
+
+# C++ configuration
+build --cxxopt=-std=c++11
+build --host_cxxopt=-std=c++11
+
+# Optimization flags
+build:opt --copt=-O3
+build:opt --copt=-march=native
+build:opt --copt=-DNDEBUG
+
+# Debug configuration
+build:debug --copt=-O0
+build:debug --copt=-g
+build:debug --copt=-DDEBUG
+
+# OpenMP configuration (uncomment to enable)
+# build:openmp --copt=-fopenmp
+# build:openmp --linkopt=-fopenmp
+# build:openmp --copt=-DOPENMP
+
+# Feature configurations
+build:with_openexr --define=with_openexr=true
+build:with_exiv2 --define=with_exiv2=true
+build:with_dynamic_loader --define=with_dynamic_loader=true
+
+# Default build configuration
+build --config=opt
+
+# Platform-specific settings
+build:linux --copt=-D_GNU_SOURCE
+build:linux --copt=-D_FILE_OFFSET_BITS=64
+
+build:macos --copt=-I/opt/local/include
+build:macos --linkopt=-L/opt/local/lib
+
+build:windows --copt=/D_USE_MATH_DEFINES
+build:windows --copt=/DNOMINMAX
+build:windows --copt=/DVC_EXTRALEAN
