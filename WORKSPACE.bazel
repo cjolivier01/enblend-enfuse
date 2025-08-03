@@ -1,4 +1,5 @@
 # WORKSPACE file for enblend-enfuse project
+# Requires Bazel 6.0.0 or later (see .bazelversion file)
 
 workspace(name = "enblend_enfuse")
 
@@ -8,26 +9,54 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "bazel_skylib",
     urls = ["https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz"],
-    # sha256 = "66ffd9315665bfaafc96b52278f57c7e2dd09f5ede279ea6d39b2be471e7e3aa",
+#    sha256 = "66ffd9315665bfaafc96b52278f57c7e2dd09f5ede279ea6d39b2be471e7e3aa",
 )
 
 # Rules for C++ compilation
 http_archive(
     name = "rules_cc",
     urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.0.9/rules_cc-0.0.9.tar.gz"],
-    # sha256 = "2037875b9a4456dce4a79d112a8ae885bbc4aad968e6587dca6e64f3a0900cdf",
+#    sha256 = "2037875b9a4456dce4a79d112a8ae885bbc4aad968e6587dca6e64f3a0900cdf",
     strip_prefix = "rules_cc-0.0.9",
 )
 
-# Boost libraries
-http_archive(
+# Boost libraries (using system installation)
+new_local_repository(
     name = "boost",
-    urls = ["https://github.com/nelhage/rules_boost/archive/96e9b631f104b43a53c21c87b01ac538ad6f3b48.tar.gz"],
-    # sha256 = "5ea00abc1dac37b7d3e42e80155d82c32c118d8ac6b616a4d9f66e5bd0b80b39",
-    strip_prefix = "rules_boost-96e9b631f104b43a53c21c87b01ac538ad6f3b48",
+    path = "/usr",  # Adjust path as needed
+    build_file_content = """
+cc_library(
+    name = "filesystem",
+    srcs = ["lib/libboost_filesystem.so"],
+    hdrs = glob(["include/boost/filesystem/**/*.hpp", "include/boost/filesystem.hpp"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+    deps = [":system"],
 )
-load("@boost//:boost/boost.bzl", "boost_deps")
-boost_deps()
+
+cc_library(
+    name = "system",
+    srcs = ["lib/libboost_system.so"],
+    hdrs = glob(["include/boost/system/**/*.hpp"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "algorithm",
+    hdrs = glob(["include/boost/algorithm/**/*.hpp"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "math",
+    hdrs = glob(["include/boost/math/**/*.hpp"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)
+""",
+)
 
 # GSL (GNU Scientific Library)
 new_local_repository(

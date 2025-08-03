@@ -13,6 +13,7 @@ build:opt --copt=-DNDEBUG
 build:debug --copt=-O0
 build:debug --copt=-g
 build:debug --copt=-DDEBUG
+build:debug --strip=never
 
 # OpenMP configuration (uncomment to enable)
 # build:openmp --copt=-fopenmp
