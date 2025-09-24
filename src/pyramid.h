@@ -38,6 +38,10 @@
 
 #include "fixmath.h"
 
+#if defined(ENBLEND_USE_CUDA)
+#include "cuda/pyramid_cuda.h"
+#endif
+
 
 namespace enblend
 {
@@ -610,6 +614,33 @@ reduce(bool wraparound,
        DestImageIterator dest_lowerright,
        DestAccessor da)
 {
+    // Fast path: when pixel types are float and accessors are contiguous row-major, use CUDA if enabled.
+#if defined(ENBLEND_USE_CUDA)
+    {
+        typedef typename DestAccessor::value_type DestPixelType;
+        if (std::is_same<DestPixelType, float>::value) {
+            const int src_w = src_lowerright.x - src_upperleft.x;
+            const int src_h = src_lowerright.y - src_upperleft.y;
+            const int dst_w = dest_lowerright.x - dest_upperleft.x;
+            const int dst_h = dest_lowerright.y - dest_upperleft.y;
+            // Attempt to access raw buffers; fall back below if not addressable
+            try {
+                const float* src_ptr = reinterpret_cast<const float*>(&sa(src_upperleft));
+                float* dst_ptr = reinterpret_cast<float*>(&da(dest_upperleft));
+                // Assume tightly packed for this fast path
+                if (src_ptr && dst_ptr) {
+                    if (enblend_cuda_reduce_f32(src_ptr, src_w, src_h, src_w,
+                                                dst_ptr, dst_w, dst_h, dst_w,
+                                                wraparound)) {
+                        return;
+                    }
+                }
+            } catch (...) {
+                // ignore and use CPU path
+            }
+        }
+    }
+#endif
     typedef typename DestAccessor::value_type DestPixelType;
 
     const int src_w = src_lowerright.x - src_upperleft.x;

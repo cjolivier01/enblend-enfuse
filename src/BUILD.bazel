@@ -1,7 +1,7 @@
 # Simplified BUILD file for src/ directory
 # This version assumes all source files are in the src/ directory
 
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -103,6 +103,35 @@ cc_library(
     ],
 )
 
+# Optional CUDA reduce implementation
+config_setting(
+    name = "with_cuda",
+    define_values = {"with_cuda": "true"},
+)
+
+cc_library(
+    name = "pyramid_cuda",
+    srcs = select({
+        "//:with_cuda": [
+            "cuda/pyramid_cuda.cu",
+        ],
+        "//conditions:default": [
+            "cuda/pyramid_cuda_stub.cc",
+        ],
+    }) + [
+        "cuda/pyramid_cuda.h",
+    ],
+    copts = COMMON_COPTS,
+    features = select({
+        "//:with_cuda": ["cuda"],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "//:with_cuda": ["-lcudart"],
+        "//conditions:default": [],
+    }),
+)
+
 # Enblend binary
 cc_binary(
     name = "enblend",
@@ -114,6 +143,7 @@ cc_binary(
     ],
     deps = [
         ":common_headers",
+    ":pyramid_cuda",
         "@libtiff//:tiff",
         "@libjpeg//:jpeg",
         "@libpng//:png",
@@ -138,6 +168,7 @@ cc_binary(
     ],
     deps = [
         ":common_headers",
+    ":pyramid_cuda",
         "@libtiff//:tiff",
         "@libjpeg//:jpeg",
         "@libpng//:png",
@@ -154,6 +185,15 @@ cc_binary(
 # Helper tool for OpenCL kernel conversion (if needed)
 cc_binary(
     name = "embrace",
-    srcs = glob(["embrace.cc"], allow_empty = True),
+    srcs = ["embrace.cc"],
     copts = COMMON_COPTS,
+)
+
+# Unit test: CUDA reduce equals CPU reference on small image
+cc_test(
+    name = "pyramid_cuda_test",
+    size = "small",
+    srcs = ["pyramid_cuda_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [":pyramid_cuda", ":common_headers"],
 )
