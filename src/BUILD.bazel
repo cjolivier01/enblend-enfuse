@@ -1,109 +1,136 @@
-# Simplified BUILD file for src/ directory
-# This version assumes all source files are in the src/ directory
-
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
 # Common compiler flags
 COMMON_COPTS = [
-    "-std=c++11",
+    "-std=gnu++11",
     "-Wall",
     "-O2",
     "-D_GNU_SOURCE",
     "-D_FILE_OFFSET_BITS=64",
-    "-I$(GENDIR)",
-    "-I.",
+    "-DHAVE_CONFIG_H",
 ]
 
 ENBLEND_COPTS = COMMON_COPTS + ["-DENBLEND_SOURCE"]
 ENFUSE_COPTS = COMMON_COPTS + ["-DENFUSE_SOURCE"]
 
-# Generate signature header
-# genrule(
-#     name = "generate_signature",
-#     srcs = [
-#         "DefaultSig.pm",
-#         "Sig.pm",
-#         "gen_sig",
-#         "//:VERSION",
-#     ],
-#     outs = ["signature.h"],
-#     cmd = """
-#         PERL_DIR=$(dirname $(location DefaultSig.pm))
-#         perl -I$PERL_DIR $(location gen_sig) --extra=$(cat $(location //:VERSION)) > $@
-#     """,
-# )
+# Generate a minimal config.h; expand as needed per system
+genrule(
+    name = "generate_config_h",
+    outs = ["config.h"],
+    cmd = """
+cat > $@ << 'EOF'
+#ifndef CONFIG_H
+#define CONFIG_H
 
-# All common source files (adjust based on actual files in src/)
-COMMON_SRCS = [
-    "alternativepercentage.cc",
-    "error_message.cc",
-    "filenameparse.cc",
-    "filespec.cc",
-    "introspection.cc",
-    "mersenne.cc",
-    "metadata.cc",
-    "parameter.cc",
-    "path.cc",
-    "progress_display.cc",
-    "self_test.cc",
-    "tiff_message.cc",
-    "timer.cc",
-]
+/* Package version */
+#define PACKAGE_VERSION "4.2"
+#define VERSION "4.2"
+#define PACKAGE_NAME "enblend-enfuse"
+#define PACKAGE_STRING "enblend-enfuse 4.2"
+#define PACKAGE_BUGREPORT "https://bugs.launchpad.net/enblend"
 
-# Enblend-specific sources
-ENBLEND_SRCS = [
-    "gpu.cc",
-    "nearest.cc",
-    "optimizer.cc",
-    "minimizer.cc",
-]
+/* Enable features */
+#define HAVE_LIBGSL 1
+#define HAVE_LIBJPEG 1
+#define HAVE_LIBPNG 1
+#define HAVE_LIBTIFF 1
+#define HAVE_LIBLCMS2 1
 
-# Enfuse-specific sources
-ENFUSE_SRCS = [
-    "exposure_weight.cc",
-]
+/* Optional features toggles (undef by default) */
+/* #define HAVE_EXIV2 1 */
+/* #define OPENCL 1 */
+/* #define OPENMP 1 */
+/* Use Boost.Optional for C++11 */
+#define HAVE_BOOST_OPTIONAL_HPP 1
 
-# OpenCL sources (optional)
-OPENCL_SRCS = [
-    "opencl.cc",
-    "opencl_exposure_weight.cc",
-]
+/* System features */
+#define HAVE_FENV_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_LRINT 1
+#define HAVE_LRINTF 1
+#define HAVE_MKSTEMP 1
+/* Map RESTRICT macro to compiler-specific restrict */
+#define RESTRICT __restrict
+/* glibc strerror_r returns char* */
+#define STRERROR_R_CHAR_P 1
+#define HAVE_DECL_STRERROR_R 1
 
-# Layer selection sources (if they exist in src/ rather than subdirectory)
-LAYER_SELECTION_SRCS = glob([
-    "**/layer_selection*.cc",
-    "**/LayerSelection*.cc",
-    "**/BatchNorm.cc",
-    "**/DataSet.cc",
-    "**/ExposureSensor.cc",
-    "**/HistogramMatching.cc",
-    "**/MLFSwMI.cc",
-    "**/Measure.cc",
-    "**/Regularization.cc",
-], allow_empty = True)
+/* Paths */
+#define DEFAULT_OPENCL_PATH "/usr/local/share/enblend/kernels:/usr/share/enblend/kernels"
 
-# Common library with headers
+#endif /* CONFIG_H */
+EOF
+""",
+)
+
+# Export config.h with an include path
 cc_library(
-    name = "common_headers",
-    hdrs = glob([
-        "*.h",
-        "*.hxx",
-    ]) + [
-        "signature.h",
-        "//:config.h",
-    ],
+    name = "config_headers",
+    hdrs = [":generate_config_h"],
     includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+# Generate signature header
+genrule(
+    name = "generate_signature",
+    srcs = [
+        "DefaultSig.pm",
+        "Sig.pm",
+        "gen_sig",
+        "//:VERSION",
+    ],
+    outs = ["signature.h"],
+    cmd = """
+        set -e
+        PERL_DIR=$$(dirname $(location Sig.pm))
+        VER=$$(cat $(location //:VERSION))
+        perl -I"$$PERL_DIR" $(location gen_sig) --extra="$$VER" > "$@"
+    """,
+)
+
+# Collect headers
+cc_library(
+    name = "headers",
+    hdrs = glob(["*.h", "*.hxx", "*.hpp"]) + [":generate_signature"],
+    includes = [".", "layer_selection"],
+    deps = [":config_headers"],
+)
+
+# Common source library
+cc_library(
+    name = "core",
+    srcs = [
+        "alternativepercentage.cc",
+        "error_message.cc",
+        "filenameparse.cc",
+        "filespec.cc",
+        "introspection.cc",
+        "mersenne.cc",
+        "metadata.cc",
+        "parameter.cc",
+        "self_test.cc",
+        "tiff_message.cc",
+        "timer.cc",
+        "minimizer.cc",
+        "opencl.cc",
+    ],
+    hdrs = [],
+    copts = COMMON_COPTS,
+    includes = ["layer_selection", "dynamic_loader"],
     deps = [
-        "@boost//:filesystem",
-        "@boost//:system",
-        "@gsl//:gsl",
+        ":headers",
+        "//src/layer_selection:layer_selection",
+        "//src/dynamic_loader:dynamic_loader",
+        "@boost//:algorithm",
         "@vigra//:vigra",
+        "@gsl//:gsl",
     ],
 )
 
-# Optional CUDA reduce implementation
+# Optional CUDA reduce implementation (stubbed unless --define=with_cuda=true)
 config_setting(
     name = "with_cuda",
     define_values = {"with_cuda": "true"},
@@ -112,22 +139,17 @@ config_setting(
 cc_library(
     name = "pyramid_cuda",
     srcs = select({
-        "//:with_cuda": [
-            "cuda/pyramid_cuda.cu",
-        ],
-        "//conditions:default": [
-            "cuda/pyramid_cuda_stub.cc",
-        ],
-    }) + [
-        "cuda/pyramid_cuda.h",
-    ],
+        ":with_cuda": ["cuda/pyramid_cuda.cu"],
+        "//conditions:default": ["cuda/pyramid_cuda_stub.cc"],
+    }),
+    hdrs = ["cuda/pyramid_cuda.h"],
     copts = COMMON_COPTS,
     features = select({
-        "//:with_cuda": ["cuda"],
+        ":with_cuda": ["cuda"],
         "//conditions:default": [],
     }),
     linkopts = select({
-        "//:with_cuda": ["-lcudart"],
+        ":with_cuda": ["-lcudart"],
         "//conditions:default": [],
     }),
 )
@@ -135,15 +157,14 @@ cc_library(
 # Enblend binary
 cc_binary(
     name = "enblend",
-    srcs = ["enblend.cc"] + COMMON_SRCS + ENBLEND_SRCS + LAYER_SELECTION_SRCS,
+    srcs = ["enblend.cc"],
     copts = ENBLEND_COPTS,
-    linkopts = [
-        "-lm",
-        "-lpthread",
-    ],
+    linkopts = ["-lm", "-lpthread"],
     deps = [
-        ":common_headers",
-    ":pyramid_cuda",
+        ":core",
+        ":pyramid_cuda",
+        "//src/layer_selection:layer_selection",
+        "//src/dynamic_loader:dynamic_loader",
         "@libtiff//:tiff",
         "@libjpeg//:jpeg",
         "@libpng//:png",
@@ -160,15 +181,13 @@ cc_binary(
 # Enfuse binary
 cc_binary(
     name = "enfuse",
-    srcs = ["enfuse.cc"] + COMMON_SRCS + ENFUSE_SRCS,
+    srcs = ["enfuse.cc", "exposure_weight.cc", "opencl_exposure_weight.cc"],
     copts = ENFUSE_COPTS,
-    linkopts = [
-        "-lm",
-        "-lpthread",
-    ],
+    linkopts = ["-lm", "-lpthread"],
     deps = [
-        ":common_headers",
-    ":pyramid_cuda",
+        ":core",
+        ":pyramid_cuda",
+        "//src/dynamic_loader:dynamic_loader",
         "@libtiff//:tiff",
         "@libjpeg//:jpeg",
         "@libpng//:png",
@@ -182,18 +201,11 @@ cc_binary(
     }),
 )
 
-# Helper tool for OpenCL kernel conversion (if needed)
-cc_binary(
-    name = "embrace",
-    srcs = ["embrace.cc"],
-    copts = COMMON_COPTS,
-)
-
 # Unit test: CUDA reduce equals CPU reference on small image
 cc_test(
     name = "pyramid_cuda_test",
     size = "small",
     srcs = ["pyramid_cuda_test.cc"],
     copts = COMMON_COPTS,
-    deps = [":pyramid_cuda", ":common_headers"],
+    deps = [":pyramid_cuda", ":headers"],
 )

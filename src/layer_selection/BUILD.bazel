@@ -1,0 +1,18 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+package(default_visibility = ["//src:__subpackages__"])
+
+cc_library(
+    name = "layer_selection",
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-std=c++11",
+        "-Wall",
+        "-O2",
+        "-D_GNU_SOURCE",
+        "-D_FILE_OFFSET_BITS=64",
+        "-DHAVE_CONFIG_H",
+    ],
+    deps = ["//src:config_headers"],
+)

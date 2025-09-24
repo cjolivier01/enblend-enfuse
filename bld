@@ -1,23 +1,22 @@
-#!/bin/bash
-set -e
-SCRIPT_DIR=$(dirname $(realpath $0))
+#!/usr/bin/env bash
+set -euo pipefail
 
-#CPU="$(uname -p)"
-#if [ "$CPU" == "x86_64" ]; then
-#  CPU="k8"
-#fi
-
-if [ ! -e "$(which bazelisk)" ]; then
-  echo "Need to install bazelisk."
-  ./scripts/install_bazelisk.sh
+# Prefer bazelisk if available, otherwise fall back to bazel.
+if command -v bazelisk >/dev/null 2>&1; then
+  BAZEL_CMD=bazelisk
+elif command -v bazel >/dev/null 2>&1; then
+  BAZEL_CMD=bazel
+else
+  echo "Error: neither bazelisk nor bazel is installed. Please install Bazel (see README-bazel.md)." >&2
+  exit 1
 fi
 
-#BAZEL_FLAGS="--config=debug --cpu=${CPU}"
+#BAZEL_FLAGS="--config=debug --cpu=$(uname -m)"
 BAZEL_FLAGS="--config=debug"
 
 TARGET="$@"
 if [ -z "${TARGET}" ]; then
-  TARGET="//..."
+  TARGET="//src:enblend //src:enfuse"
 fi
 
-bazelisk build ${BAZEL_FLAGS} ${TARGET}
+exec "$BAZEL_CMD" build ${BAZEL_FLAGS} ${TARGET}

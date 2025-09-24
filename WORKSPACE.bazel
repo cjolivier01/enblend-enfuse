@@ -9,49 +9,44 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "bazel_skylib",
     urls = ["https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz"],
-#    sha256 = "66ffd9315665bfaafc96b52278f57c7e2dd09f5ede279ea6d39b2be471e7e3aa",
 )
 
 # Rules for C++ compilation
 http_archive(
     name = "rules_cc",
     urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.0.9/rules_cc-0.0.9.tar.gz"],
-#    sha256 = "2037875b9a4456dce4a79d112a8ae885bbc4aad968e6587dca6e64f3a0900cdf",
     strip_prefix = "rules_cc-0.0.9",
 )
 
 # Boost libraries (using system installation)
 new_local_repository(
     name = "boost",
-    path = "/usr",  # Adjust path as needed
+    path = "/usr",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "filesystem",
-    srcs = ["lib/libboost_filesystem.so"],
-    hdrs = glob(["include/boost/filesystem/**/*.hpp", "include/boost/filesystem.hpp"]),
+    hdrs = glob(["include/boost/**/*.hpp"]),
     includes = ["include"],
+    linkopts = ["-lboost_filesystem", "-lboost_system"],
     visibility = ["//visibility:public"],
-    deps = [":system"],
 )
-
 cc_library(
     name = "system",
-    srcs = ["lib/libboost_system.so"],
-    hdrs = glob(["include/boost/system/**/*.hpp"]),
+    hdrs = glob(["include/boost/**/*.hpp"]),
     includes = ["include"],
+    linkopts = ["-lboost_system"],
     visibility = ["//visibility:public"],
 )
-
 cc_library(
     name = "algorithm",
-    hdrs = glob(["include/boost/algorithm/**/*.hpp"]),
+    hdrs = glob(["include/boost/**/*.hpp"]),
     includes = ["include"],
     visibility = ["//visibility:public"],
 )
-
 cc_library(
     name = "math",
-    hdrs = glob(["include/boost/math/**/*.hpp"]),
+    hdrs = glob(["include/boost/**/*.hpp"]),
     includes = ["include"],
     visibility = ["//visibility:public"],
 )
@@ -61,13 +56,14 @@ cc_library(
 # GSL (GNU Scientific Library)
 new_local_repository(
     name = "gsl",
-    path = "/usr",  # Adjust path as needed
+    path = "/usr",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "gsl",
-    srcs = ["lib/libgsl.so", "lib/libgslcblas.so"],
     hdrs = glob(["include/gsl/*.h"]),
     includes = ["include"],
+    linkopts = ["-lgsl", "-lgslcblas"],
     visibility = ["//visibility:public"],
 )
 """,
@@ -76,12 +72,14 @@ cc_library(
 # VIGRA library
 new_local_repository(
     name = "vigra",
-    path = "/usr",  # Adjust path as needed
+    path = "/usr",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "vigra",
     hdrs = glob(["include/vigra/**/*.hxx", "include/vigra/**/*.h"]),
     includes = ["include"],
+    linkopts = ["-lvigraimpex"],
     visibility = ["//visibility:public"],
 )
 """,
@@ -90,13 +88,14 @@ cc_library(
 # TIFF library
 new_local_repository(
     name = "libtiff",
-    path = "/usr",  # Adjust path as needed
+    path = "/usr",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "tiff",
-    srcs = ["lib/libtiff.so"],
     hdrs = glob(["include/tiff*.h"]),
     includes = ["include"],
+    linkopts = ["-ltiff"],
     visibility = ["//visibility:public"],
 )
 """,
@@ -105,13 +104,14 @@ cc_library(
 # JPEG library
 new_local_repository(
     name = "libjpeg",
-    path = "/usr",  # Adjust path as needed
+    path = "/usr",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "jpeg",
-    srcs = ["lib/libjpeg.so"],
     hdrs = glob(["include/j*.h"]),
     includes = ["include"],
+    linkopts = ["-ljpeg"],
     visibility = ["//visibility:public"],
 )
 """,
@@ -120,13 +120,14 @@ cc_library(
 # PNG library
 new_local_repository(
     name = "libpng",
-    path = "/usr",  # Adjust path as needed
+    path = "/usr",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "png",
-    srcs = ["lib/libpng.so"],
     hdrs = glob(["include/png*.h", "include/libpng*/*.h"]),
     includes = ["include"],
+    linkopts = ["-lpng"],
     visibility = ["//visibility:public"],
 )
 """,
@@ -135,13 +136,14 @@ cc_library(
 # LittleCMS2
 new_local_repository(
     name = "lcms2",
-    path = "/usr",  # Adjust path as needed
+    path = "/usr",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "lcms2",
-    srcs = ["lib/liblcms2.so"],
     hdrs = glob(["include/lcms2*.h"]),
     includes = ["include"],
+    linkopts = ["-llcms2"],
     visibility = ["//visibility:public"],
 )
 """,
@@ -150,13 +152,15 @@ cc_library(
 # OpenEXR (optional)
 new_local_repository(
     name = "openexr",
-    path = "/usr",  # Adjust path as needed
+    path = "/usr",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
+# Note: OpenEXR 3 changed library names; adjust if needed.
 cc_library(
     name = "openexr",
-    srcs = glob(["lib/libIlm*.so", "lib/libHalf*.so", "lib/libIex*.so", "lib/libOpenEXR*.so"]),
-    hdrs = glob(["include/OpenEXR/*.h"]),
+    hdrs = glob(["include/OpenEXR/*.h", "include/OpenEXR/*.hpp"]) ,
     includes = ["include"],
+    linkopts = ["-lOpenEXR", "-lIlmImf", "-lImath", "-lIex", "-lHalf"],
     visibility = ["//visibility:public"],
 )
 """,
@@ -165,13 +169,14 @@ cc_library(
 # Exiv2 (optional, for metadata)
 new_local_repository(
     name = "exiv2",
-    path = "/usr",  # Adjust path as needed
+    path = "/usr",
     build_file_content = """
+load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "exiv2",
-    srcs = ["lib/libexiv2.so"],
     hdrs = glob(["include/exiv2/*.hpp"]),
     includes = ["include"],
+    linkopts = ["-lexiv2"],
     visibility = ["//visibility:public"],
 )
 """,

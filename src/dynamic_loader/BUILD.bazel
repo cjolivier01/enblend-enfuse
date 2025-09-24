@@ -6,14 +6,26 @@ package(default_visibility = ["//src:__subpackages__"])
 
 cc_library(
     name = "dynamic_loader",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h"]),
+    srcs = [
+        "dynamic_loader.cc",
+        "dynamic_loader_implementation.cc",
+        "posix_implementation.cc",
+    ],
+    hdrs = [
+        "dynamic_loader.h",
+        "dynamic_loader_implementation.h",
+        "posix_implementation.h",
+    ],
+    includes = ["."],
     copts = [
         "-std=c++11",
         "-Wall",
         "-O2",
         "-D_GNU_SOURCE",
         "-D_FILE_OFFSET_BITS=64",
+        "-DHAVE_CONFIG_H",
+        "-DPOSIX_DL",
     ],
     linkopts = ["-ldl"],  # For dlopen, dlsym, etc.
+    deps = ["//src:config_headers"],
 )

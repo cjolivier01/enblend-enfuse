@@ -15,10 +15,10 @@ build:debug --copt=-g
 build:debug --copt=-DDEBUG
 build:debug --strip=never
 
-# OpenMP configuration (uncomment to enable)
-# build:openmp --copt=-fopenmp
-# build:openmp --linkopt=-fopenmp
-# build:openmp --copt=-DOPENMP
+# OpenMP configuration (enable with `--config=openmp`)
+build:openmp --copt=-fopenmp
+build:openmp --linkopt=-fopenmp
+build:openmp --copt=-DOPENMP
 
 # Feature configurations
 build:with_openexr --define=with_openexr=true
