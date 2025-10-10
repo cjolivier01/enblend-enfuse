@@ -2,6 +2,7 @@
 # Place this in the root directory as BUILD.bazel
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//:install_tree_rules.bzl", "staged_install_tree")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -62,3 +63,18 @@ genrule(
     cmd = 'echo "4.2" > $@',
 )
 load("@rules_cc//cc:defs.bzl", "cc_library")
+
+staged_install_tree(
+    name = "staged_install_tree",
+    enblend = "//src:enblend",
+    enfuse = "//src:enfuse",
+    enblend_man = "//src:enblend.1",
+    enfuse_man = "//src:enfuse.1",
+)
+
+sh_binary(
+    name = "install_tree",
+    srcs = ["tools/install_tree.sh"],
+    data = [":staged_install_tree"],
+    args = ["--staged-tree=$(location :staged_install_tree)"],
+)

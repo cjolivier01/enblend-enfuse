@@ -2,6 +2,11 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
+exports_files([
+    "enblend.1",
+    "enfuse.1",
+])
+
 # Common compiler flags
 COMMON_COPTS = [
     "-std=gnu++11",
